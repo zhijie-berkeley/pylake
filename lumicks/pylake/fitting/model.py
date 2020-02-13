@@ -1,7 +1,7 @@
 import inspect
 import numpy as np
 from collections import OrderedDict
-from .parameters import Parameter
+from .parameters import Parameter, Parameters
 from .fitdata import FitData
 from .detail.derivative_manipulation import numerical_jacobian, numerical_diff, invert_jacobian, invert_function, \
     invert_derivative
@@ -195,17 +195,17 @@ class Model:
 
         return jacobian
 
-    def verify_derivative(self, independent, parameters, **kwargs):
+    def verify_derivative(self, independent, parameters, dx=1e-6, **kwargs):
         if len(parameters) != len(self._parameters):
             raise ValueError("Parameter vector has invalid length. "
                              f"Expected: {len(self._parameters)}, got: {len(parameters)}.")
 
         derivative = self.derivative(independent, parameters)
-        derivative_fd = numerical_diff(lambda x: self._raw_call(x, parameters), independent)
+        derivative_fd = numerical_diff(lambda x: self._raw_call(x, parameters), independent, dx=dx)
 
         return np.allclose(derivative, derivative_fd, **kwargs)
 
-    def verify_jacobian(self, independent, parameters, plot=False, verbose=True, **kwargs):
+    def verify_jacobian(self, independent, parameters, plot=False, verbose=True, dx=1e-6, **kwargs):
         if len(parameters) != len(self._parameters):
             raise ValueError("Parameter vector has invalid length. "
                              f"Expected: {len(self._parameters)}, got: {len(parameters)}.")
@@ -213,16 +213,18 @@ class Model:
         independent = self._sanitize_input_types(independent)
 
         jacobian = self.jacobian(independent, parameters)
-        jacobian_fd = numerical_jacobian(lambda parameter_values: self._raw_call(independent, parameter_values), parameters)
+        jacobian_fd = numerical_jacobian(lambda parameter_values: self._raw_call(independent, parameter_values),
+                                         parameters, dx=dx)
 
+        jacobian = np.array(jacobian)
         if plot:
             n_x, n_y = optimal_plot_layout(len(self._parameters))
             for i_parameter, parameter in enumerate(self._parameters):
                 plt.subplot(n_x, n_y, i_parameter+1)
-                l1 = plt.plot(independent, np.transpose(jacobian[i_parameter, :]))
-                l2 = plt.plot(independent, np.transpose(jacobian_fd[i_parameter, :]), '--')
+                l1 = plt.plot(independent, np.transpose(jacobian[i_parameter, :]), linewidth=2)
+                l2 = plt.plot(independent, np.transpose(jacobian_fd[i_parameter, :]), '--', linewidth=1)
                 plt.title(parameter)
-                plt.legend({'Analytic', 'FD'})
+                plt.legend(['Analytic', 'FD'])
 
         is_close = np.allclose(jacobian, jacobian_fd, **kwargs)
         if not is_close:
@@ -353,6 +355,12 @@ class Model:
 
             dna_model.plot(F.parameters, d1, independent=np.arange(1.0, 10.0, .01), fmt='k--')  # Use custom range
         """
+        # Admittedly not very pythonic, but the errors you get otherwise are confusing.
+        if not isinstance(global_parameters, Parameters):
+            raise RuntimeError('Did not pass Parameters')
+        if not isinstance(data, FitData):
+            raise RuntimeError('Did not pass FitData')
+
         x = independent if np.any(independent) else np.sort(data.x)
         plt.plot(x, self(x, data.get_parameters(global_parameters)), fmt, **kwargs)
 
