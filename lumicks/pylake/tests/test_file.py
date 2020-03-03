@@ -1,5 +1,6 @@
 import numpy as np
 from lumicks import pylake
+from lumicks.pylake.marker import Marker
 import pytest
 from textwrap import dedent
 
@@ -73,6 +74,19 @@ def test_calibration(h5_file):
         assert len(f.downsampled_force1x.calibration) == 1
 
 
+def test_marker(h5_file):
+    f = pylake.File.from_h5py(h5_file)
+
+    if f.format_version == 2:
+        with pytest.raises(IndexError):
+            f["Marker"]["test_marker"]
+
+        assert np.isclose(f.markers["test_marker"].start, 100)
+        assert np.isclose(f.markers["test_marker"].stop, 200)
+        assert np.isclose(f.markers["test_marker2"].start, 200)
+        assert np.isclose(f.markers["test_marker2"].stop, 300)
+
+
 def test_properties(h5_file):
     f = pylake.File.from_h5py(h5_file)
     if f.format_version == 1:
@@ -99,6 +113,24 @@ def test_groups(h5_file):
         for x in range(0, 2):
             t = [name for name in f["Force HF"]]
             assert set(t) == set(["Force 1x", "Force 1y"])
+
+
+def test_blacklist(h5_file):
+    f = pylake.File.from_h5py(h5_file)
+    with pytest.raises(IndexError):
+        f["Calibration"]
+
+    with pytest.raises(IndexError):
+        f["Marker"]
+
+    with pytest.raises(IndexError):
+        f["FD Curve"]
+
+    with pytest.raises(IndexError):
+        f["Kymograph"]
+
+    with pytest.raises(IndexError):
+        f["Scan"]
 
 
 def test_repr_and_str(h5_file):
@@ -129,6 +161,67 @@ def test_repr_and_str(h5_file):
               Force 1y:
               - Data type: [('Timestamp', '<i8'), ('Value', '<f8')]
               - Size: 2
+            
+            .force1x
+            .force1y
+        """)
+    if f.format_version == 2:
+        assert str(f) == dedent("""\
+            File root metadata:
+            - Bluelake version: unknown
+            - Description: 
+            - Experiment: 
+            - Export time (ns): -1
+            - File format version: 2
+            - GUID: 
+            
+            Force HF:
+              Force 1x:
+              - Data type: float64
+              - Size: 5
+              Force 1y:
+              - Data type: float64
+              - Size: 5
+            Force LF:
+              Force 1x:
+              - Data type: [('Timestamp', '<i8'), ('Value', '<f8')]
+              - Size: 2
+              Force 1y:
+              - Data type: [('Timestamp', '<i8'), ('Value', '<f8')]
+              - Size: 2
+            Info wave:
+              Info wave:
+              - Data type: int32
+              - Size: 64
+            Photon Time Tags:
+              Red:
+              - Data type: int64
+              - Size: 9
+            Photon count:
+              Blue:
+              - Data type: int32
+              - Size: 64
+              Green:
+              - Data type: int32
+              - Size: 64
+              Red:
+              - Data type: int32
+              - Size: 64
+            
+            .kymos
+              - Kymo1
+            
+            .scans
+              - Scan1
+            
+            .markers
+              - test_marker
+              - test_marker2
+            
+            .force1x
+              .calibration
+            .force1y
+              .calibration
         """)
 
 

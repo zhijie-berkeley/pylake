@@ -69,6 +69,16 @@ class MockDataFile_v2(MockDataFile_v1):
         for i, v in attributes.items():
             field.attrs[i] = v
 
+    def make_marker(self, marker_name, attributes):
+        if "Marker" not in self.file:
+            self.file.create_group("Marker")
+
+        if marker_name not in self.file["Marker"]:
+            dset = self.file["Marker"].create_dataset(marker_name, data=f'{{"name":"{marker_name}"}}')
+
+            for i, v in attributes.items():
+                dset.attrs[i] = v
+
     def make_continuous_channel(self, group, name, start, dt, data):
         dset = super().make_continuous_channel(group, name, start, dt, data)
         dset.attrs["Kind"] = "Continuous"
@@ -81,10 +91,7 @@ class MockDataFile_v2(MockDataFile_v1):
         if group not in self.file:
             self.file.create_group(group)
 
-        data_location = group + "_" + name
-        self.file.create_group(data_location)
-
-        self.file[group][name] = self.file[data_location].create_dataset("value0", data=data)
+        self.file[group].create_dataset(name, data=data)
         return self.file[group][name]
 
     def make_timetags_channel(self, group, name, data):
@@ -125,6 +132,9 @@ def h5_file(tmpdir_factory, request):
         mock_file.make_calibration_data("2", "Force 1y", {calibration_time_field: 1})
         mock_file.make_calibration_data("3", "Force 1y", {calibration_time_field: 10})
         mock_file.make_calibration_data("4", "Force 1y", {calibration_time_field: 100})
+
+        mock_file.make_marker("test_marker", {'Start time (ns)': 100, 'Stop time (ns)': 200})
+        mock_file.make_marker("test_marker2", {'Start time (ns)': 200, 'Stop time (ns)': 300})
 
         counts = [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 8, 0,
                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0,
