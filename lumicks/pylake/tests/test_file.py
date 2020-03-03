@@ -191,7 +191,7 @@ def test_repr_and_str(h5_file):
               - Size: 2
             Info wave:
               Info wave:
-              - Data type: int32
+              - Data type: uint8
               - Size: 64
             Photon Time Tags:
               Red:
@@ -199,13 +199,13 @@ def test_repr_and_str(h5_file):
               - Size: 9
             Photon count:
               Blue:
-              - Data type: int32
+              - Data type: uint32
               - Size: 64
               Green:
-              - Data type: int32
+              - Data type: uint32
               - Size: 64
               Red:
-              - Data type: int32
+              - Data type: uint32
               - Size: 64
             
             .kymos

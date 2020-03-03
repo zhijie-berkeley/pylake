@@ -136,15 +136,15 @@ def h5_file(tmpdir_factory, request):
         mock_file.make_marker("test_marker", {'Start time (ns)': 100, 'Stop time (ns)': 200})
         mock_file.make_marker("test_marker2", {'Start time (ns)': 200, 'Stop time (ns)': 300})
 
-        counts = [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 8, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0,
-                  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 8, 0,
-                  0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 8, 0]
+        counts = np.uint32([2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 8, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0,
+                            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 8, 0,
+                            0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 8, 0])
 
-        infowave = [1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 0, 2,
-                    0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 0, 2,
-                    1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 0, 2,
-                    0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 0, 2]
+        infowave = np.uint8([1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 0, 2,
+                             0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 0, 2,
+                             1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 0, 2,
+                             0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 0, 2])
 
         enc = json.JSONEncoder()
 
@@ -177,14 +177,14 @@ def h5_file(tmpdir_factory, request):
         })
 
         # Generate lines at 1 Hz
-        freq = int(1e9 / 16)
-        mock_file.make_continuous_channel("Photon count", "Red", int(20e9), freq, counts)
-        mock_file.make_continuous_channel("Photon count", "Green", int(20e9), freq, counts)
-        mock_file.make_continuous_channel("Photon count", "Blue", int(20e9), freq, counts)
-        mock_file.make_continuous_channel("Info wave", "Info wave", int(20e9), freq, infowave)
+        freq = 1e9 / 16
+        mock_file.make_continuous_channel("Photon count", "Red", np.int64(20e9), freq, counts)
+        mock_file.make_continuous_channel("Photon count", "Green", np.int64(20e9), freq, counts)
+        mock_file.make_continuous_channel("Photon count", "Blue", np.int64(20e9), freq, counts)
+        mock_file.make_continuous_channel("Info wave", "Info wave", np.int64(20e9), freq, infowave)
         ds = mock_file.make_json_data("Kymograph", "Kymo1", json_string)
-        ds.attrs["Start time (ns)"] = int(20e9)
-        ds.attrs["Stop time (ns)"] = int(20e9 + len(infowave) * freq)
+        ds.attrs["Start time (ns)"] = np.int64(20e9)
+        ds.attrs["Stop time (ns)"] = np.int64(20e9 + len(infowave) * freq)
 
         json_string = enc.encode({
             "value0": {
@@ -223,8 +223,8 @@ def h5_file(tmpdir_factory, request):
         })
 
         ds = mock_file.make_json_data("Scan", "Scan1", json_string)
-        ds.attrs["Start time (ns)"] = int(20e9)
-        ds.attrs["Stop time (ns)"] = int(20e9 + len(infowave) * freq)
+        ds.attrs["Start time (ns)"] = np.int64(20e9)
+        ds.attrs["Stop time (ns)"] = np.int64(20e9 + len(infowave) * freq)
 
     return mock_file.file
 
