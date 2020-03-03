@@ -355,6 +355,9 @@ def channel_class(dset):
             raise RuntimeError("Unknown channel kind " + str(kind))
     elif dset.dtype.fields is None:
         # For compatibility with Bluelake HDF5 files v1
-        return Continuous
+        if "Sample rate (Hz)" in dset.attrs.keys():
+            return Continuous
+        else:
+            raise IndexError("Direct access to this field is not supported.")
     else:
         return TimeSeries
