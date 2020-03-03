@@ -10,6 +10,7 @@ from .group import Group
 from .kymo import Kymo
 from .point_scan import PointScan
 from .scan import Scan
+from .marker import Marker
 
 __all__ = ["File"]
 
@@ -47,6 +48,12 @@ class File(Group, Force, DownsampledFD, PhotonCounts, PhotonTimeTags):
         ff_version = int(self.h5.attrs["File format version"])
         if ff_version not in File.SUPPORTED_FILE_FORMAT_VERSIONS:
             raise Exception(f"Unsupported Bluelake file format version {ff_version}")
+
+        self.blacklist = {"Calibration": "file.force1x.calibration",
+                          "Marker": "file.markers",
+                          "FD Curve": "file.fdcurves",
+                          "Kymograph": "file.kymos",
+                          "Scan": "file.scans"}
 
     @classmethod
     def from_h5py(cls, h5py_file):
@@ -104,6 +111,8 @@ class File(Group, Force, DownsampledFD, PhotonCounts, PhotonTimeTags):
             r += f"{space}- Size: {dset.size}\n"
             return r
 
+        blacklist = self.blacklist
+
         def print_group(group, name="", indent=-2):
             r = ""
             if name:
@@ -114,10 +123,24 @@ class File(Group, Force, DownsampledFD, PhotonCounts, PhotonTimeTags):
                 if isinstance(item, h5py.Dataset):
                     r += print_dataset(item, key, indent + 2)
                 else:
-                    r += print_group(item, key, indent + 2)
+                    if key not in blacklist:
+                        r += print_group(item, key, indent + 2)
             return r
 
-        return print_attributes(self.h5) + "\n" + print_group(self.h5)
+        def print_dicts(field_name):
+            field = getattr(self, field_name)
+            return f'\n.{field_name}\n' + ''.join(f'  - {key}\n' for key in field.keys()) if field else ''
+
+        def print_force(field_name):
+            field = getattr(self, field_name)
+            calibration = '  .calibration\n' if field.calibration else ''
+            return f'.{field_name}\n{calibration}' if field else ''
+
+        return print_attributes(self.h5) + "\n" + print_group(self.h5) + \
+            ''.join((print_dicts(field) for field in ['kymos', 'fdcurves', 'scans', 'markers'])) + "\n" + \
+            ''.join((print_force(field) for field in ['force1x', 'force1y', 'force2x', 'force2y',
+                                                      'force3x', 'force3y', 'force4x', 'force4y']))
+
 
     def _get_force(self, n, xy):
         force_group = self.h5["Force HF"][f"Force {n}{xy}"]
@@ -160,26 +183,29 @@ class File(Group, Force, DownsampledFD, PhotonCounts, PhotonTimeTags):
     def _get_photon_time_tags(self, name):
         return TimeTags.from_dataset(self.h5["Photon Time Tags"][name], "Photon time tags")
 
+    def _get_object_dictionary(self, field, cls):
+        if field not in self.h5:
+            return dict()
+        return {name: cls.from_dataset(dset, self) for name, dset in self.h5[field].items()}
+
     @property
     def kymos(self) -> Dict[str, Kymo]:
-        if "Kymograph" not in self.h5:
-            return dict()
-        return {name: Kymo.from_dataset(dset, self) for name, dset in self.h5["Kymograph"].items()}
+        return self._get_object_dictionary("Kymograph", Kymo)
 
     @property
     def point_scans(self) -> Dict[str, Scan]:
-        if "Point Scan" not in self.h5:
-            return dict()
-        return {name: PointScan(dset, self) for name, dset in self.h5["Point Scan"].items()}
+        return self._get_object_dictionary("Point Scan", PointScan)
 
     @property
     def scans(self) -> Dict[str, Scan]:
-        if "Scan" not in self.h5:
-            return dict()
-        return {name: Scan.from_dataset(dset, self) for name, dset in self.h5["Scan"].items()}
+        return self._get_object_dictionary("Scan", Scan)
 
     @property
     def fdcurves(self) -> Dict[str, FDCurve]:
-        if "FD Curve" not in self.h5:
+        return self._get_object_dictionary("FD Curve", FDCurve)
+
+    @property
+    def markers(self) -> Dict[str, dict]:
+        if "Marker" not in self.h5:
             return dict()
-        return {name: FDCurve.from_dset(dset, self) for name, dset in self.h5["FD Curve"].items()}
+        return {name: Marker.from_dataset(dset) for name, dset in self.h5["Marker"].items()}

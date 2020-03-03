@@ -12,9 +12,14 @@ class Group:
     """
     def __init__(self, h5py_group):
         self.h5 = h5py_group
+        self.blacklist = {}
 
     def __getitem__(self, item):
         """Return a subgroup or a bluelake timeline channel"""
+        if item in self.blacklist:
+            raise IndexError(f"Direct access to this field is not supported. Use {self.blacklist[item]} "
+                             f"instead. In case raw access is needed, go through the fn.h5 directly.")
+
         thing = self.h5[item]
         if type(thing) is h5py.Group:
             return Group(thing)
